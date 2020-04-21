@@ -3,8 +3,6 @@
 "..\obj\stm32f4xx_it.o"
 "..\obj\system_stm32f4xx.o"
 "..\obj\led.o"
-"..\obj\lcd.o"
-"..\obj\adc.o"
 "..\obj\mq_sensor.o"
 "..\obj\hc_sr501.o"
 "..\obj\exti.o"

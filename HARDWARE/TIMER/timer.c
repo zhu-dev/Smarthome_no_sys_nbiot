@@ -19,7 +19,7 @@ void TIM2_IRQHandler(void)
 }
 
 ////定时器3中断服务程序		    
-//void TIM2_IRQHandler(void)
+//void TIM3_IRQHandler(void)
 //{ 	
 //	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)//是更新中断
 //	{	 			   

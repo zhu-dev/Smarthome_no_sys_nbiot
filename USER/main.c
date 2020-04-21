@@ -17,7 +17,7 @@
 
 
 void check_NB_Status(void);
-void  check_DHT11_Status(void);
+void check_DHT11_Status(void);
 void handle_cloud_cmd(char *data);
 
 
@@ -28,7 +28,7 @@ static void urc_recvdata_func( const char *data, uint16_t size )
     memset( outData, 0x00, sizeof(outData) ); //清空临时缓冲区
 		memcpy( outData, data, sizeof(outData) ); //不能直接操作全局变量
    // printf( "[INFO]urc_recvdata_func\r\n" );		
-    printf( "[INFO]recv data:%s\r\n", outData );
+    printf( "[INFO]recv data:%s", outData );
 		handle_cloud_cmd(outData);//处理接收到的命令
 }
 
@@ -45,18 +45,26 @@ int main(void)
  	
 	//MQ sensor相关变量
 	float ppm1,ppm2,ppm3;
-	uint16_t ppm_1,ppm_2,ppm_3;
+	uint16_t ppm_1 = 0;
+	uint16_t ppm_2 = 0;
+	uint16_t ppm_3 = 0;
 	
-	//DHT11相关变量
+	//DHT11相关变量,赋初值，避免引传感器出错，导致上报数据异常，引起平台和应用服务器报错
 	u8 t=0;			    
-	u8 temperature1, temperature2, temperature3;  	    
-	u8 humidity1, humidity2, humidity3;  
+	u8 temperature1 = 26;
+	u8 temperature2 = 26;
+	u8 temperature3 = 26;	    
+	u8 humidity1 = 0;
+	u8 humidity2 = 0;
+	u8 humidity3 = 0; 
 	
 
 	//NB模组驱动相关变量
 	uint8_t res		= 0;
-	char	tmpBuf1[512];
-	char	tmpBuf2[512];
+	char *headstr = "00";
+	char	tmpBuf1[128];
+	char	tmpBuf2[128];
+	char	tmpBuf3[128];
   struct at_client	clientObj;
   at_client_t			client = &clientObj;
   NBBCxx_setUrcTable( client, urc_table, sizeof(urc_table) / sizeof(urc_table[0]) );
@@ -65,94 +73,77 @@ int main(void)
 	//外设初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	delay_init(168);    //初始化延时函数
-	uart_init(9600);	//初始化串口波特率为115200
-	LED_Init();					//初始化LED 
- 	LCD_Init();         //初始化LCD接口
+	uart_init(9600);	//初始化串口波特率为9600
+	LED_Init();					//初始化板载测试LED 
+
 	
 	MQ2_Init();						//初始化MQ2
-	HC_SR_Init();		
-
+	HC_SR_Init();		      //人体红外
 
 	//DHT11相关
-	//check_DHT11_Status(); //检查DHT11硬件是否连接正常
-	//ADC_SoftwareStartConv(ADC1); //开始ADC转换
+	check_DHT11_Status(); //检查DHT11硬件是否连接正常
+	ADC_SoftwareStartConv(ADC1); //开始ADC转换
 	
 	//NB-COAP相关
 	NBBCxx_init();  //NB M5310A模组驱动初始化
-  //check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，记得关闭PSM模式！！！！！！！！！
+  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，记得关闭PSM模式！！！！！！！！！
 	
 	
 	while(1)
 	{ 
 		
 		NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取
+		
+		if(t%100 == 0)
+		{
 			
-//		if(tim2count > 2000)
-//		{
-//			
-//			TIM_Cmd(TIM2, DISABLE);  //关闭TIM2
-//			
-//			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
-//			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
-//			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
-//			
-//			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
-//			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
-//			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
-//			
-//			if(temperature1>100) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大
-//			if(temperature2>100) temperature2 = 26;
-//			if(temperature3>100) temperature3 = 26;
+			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
+			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
+			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
+			
+			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
+			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
+			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
+			
+			if(temperature1>99) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+			if(temperature2>99) temperature2 = 26;
+			if(temperature3>99) temperature3 = 26;
 
-//			ppm1 = MQ2_GetPPM(0);
-//			ppm2 = MQ2_GetPPM(1);
-//			ppm3 = MQ2_GetPPM(2);
-//			
-//			ppm_1 = ppm1;
-//			ppm_2 = ppm2;
-//			ppm_3 = ppm3;
-//			
-//			printf("[DATA]ppm1:%.2f \r\n",ppm1);
-//			printf("[DATA]ppm2:%.2f \r\n",ppm2);
-//			printf("[DATA]ppm3:%.2f \r\n",ppm3);
-//			
-//			if(ppm1>10000) ppm1 = 9999.0f;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
-//			if(ppm2>10000) ppm1 = 9999.0f;
-//			if(ppm3>10000) ppm1 = 9999.0f;
-//			
-//			//需要测试下烟雾参数为50时是否还是输出4个字符
-//			sprintf( tmpBuf1, "%2d%2d%4d%2d%2d%4d%2d%2d%4d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature2,humidity1,ppm_3);
-//			printf( "[INFO]coap send primary data:%s\r\n", tmpBuf1 );
-//			/*进行格式转换 */
-//			memset( tmpBuf2, 0x00, sizeof(tmpBuf2) );
-//			hexToStr( tmpBuf1, tmpBuf2 );
-//			NBBCxx_setNMGS_char( tmpBuf2 );
-//			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf2);
-//			
-//			TIM_Cmd(TIM2, ENABLE);  //开启TIM2
-//			
-//			//这里显示数据到LCD上
-//			//LCD_show_data();
-//			
-//			
-//			if(temperature1>50||temperature2>50||temperature3>50)
-//			{
-//				//发送高温短信和播放语音
-//			}
-//			
-//			if(humidity1>99||humidity1>99||humidity1>99)
-//			{
-//				//发送高湿度短信和播放语音
-//			}
-//			
-//			if(ppm_1||ppm_2||ppm_3)
-//			{
-//				//发送烟雾超限短信和播放语音
-//			}
-//			
-//		}
-
-
+			if(humidity1>99) humidity1 = 50; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+			if(humidity2>99) humidity2 = 50;
+			if(humidity3>99) humidity3 = 50;
+			
+			ppm1 = MQ2_GetPPM(0);
+			ppm2 = MQ2_GetPPM(1);
+			ppm3 = MQ2_GetPPM(2);
+			
+			ppm_1 = ppm1;
+			ppm_2 = ppm2;
+			ppm_3 = ppm3;
+			
+			printf("[DATA]ppm1:%.2f \r\n",ppm1);
+			printf("[DATA]ppm2:%.2f \r\n",ppm2);
+			printf("[DATA]ppm3:%.2f \r\n",ppm3);
+			
+			if(ppm_1>9999) ppm_1 = 9999;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
+			if(ppm_2>9999) ppm_2 = 9999;
+			if(ppm_3>9999) ppm_3 = 9999;
+			
+			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
+			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
+			/*进行格式转换 */
+			memset(tmpBuf2, 0x00, sizeof(tmpBuf2) );
+			hexToStr( tmpBuf1, tmpBuf2 );
+			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
+			NBBCxx_setNMGS_char( tmpBuf3 );
+			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
+			
+		}
+		
+		delay_ms(20);
+		if(t>200) t=0;
+		t++;
+	
 		
 	}
 }
@@ -160,14 +151,17 @@ int main(void)
 
 void  check_DHT11_Status(void)
 {
+	uint8_t error = 0;
 	while(DHT11_Init())	//DHT11初始化	
 	{
+		error = 1;
 		printf(" DHT11_1 init error");
 	}
 		delay_ms(10);
 	
 		while(DHT11_2_Init())	//DHT11_2初始化	
 	{
+		error = 1;
 		printf(" DHT11_2 init error");
 	}
 	
@@ -175,8 +169,19 @@ void  check_DHT11_Status(void)
 	
 		while(DHT11_3_Init())	//DHT11_3初始化	
 	{
+		error = 1;
 		printf(" DHT11_3 init error");
 	}
+	
+		 if(error)
+	 {
+		   //可以重启
+		  //点亮故障灯
+	 }
+	 else
+	 {
+		 printf("DHT11 INIT SUCESS!!!\r\n");
+	 }
 }
 
 
@@ -216,7 +221,13 @@ void check_NB_Status(void)
 	 if(error)
 	 {
 		   //可以重启模组
-	 }	 
+		  //点亮故障灯
+	 }
+	 else
+	 {
+		 printf("NB MODEL INIT SUCESS!!!\r\n");
+	 }
+		
 }
 
 
@@ -225,18 +236,21 @@ void handle_cloud_cmd(char *data)
 
 	char messageId; //命令头部(messageId)
 
-	char * p = NULL; //匹配字符位置指针
+	char *p = NULL; //匹配字符位置指针
 	
-	char * cmd;//平台下发的命令体(messageId+content)
+	char *cmd;//平台下发的命令体(messageId+content)
 	
-	char * cmd_body; //命令体原始16进制字符串
+	char *cmd_body; //命令体原始16进制字符串
 	
 	char body[50];//命令输出缓冲区，输出为ascii字符串
 	
+	char *temperatrueSet = "26";
 	
 	uint32_t outLen = 0;//转化后的字符长度，正常是原来的一半
 	
 	uint8_t res; //结果码
+	
+	//+NNMI:2,0343\r\n
 	
 	p = (char *)strstr((const char *)data,(const char *)",");
 	
@@ -246,17 +260,12 @@ void handle_cloud_cmd(char *data)
 	
 	messageId = cmd[1];
 
-//	printf("cmd_body:%s",cmd_body);
-//	printf("cmd_body len%d\r\n",strlen(cmd_body));
-	
-	cmd_body[strlen(cmd_body)-4] = '\0';//平台发回来的带有\r\n结尾，将第一个\设置为'\0'，去掉回车换行
-	//printf("cmd_body2 len%d\r\n",strlen(cmd_body));
-	
+	//cmd_body[strlen(cmd_body)-4] = '\0';//测试的带有\r\n结尾，将第一个\设置为'\0'，去掉回车换行,但是真正平台发回来的却没有，神奇
+
 	memset(body,0x00,sizeof(body));//在转化前将临时缓冲区清除
 	res = strToHex(cmd_body,body,&outLen);//将16进字符串转化为ascii字符，注意头部不能转，是特殊符号，会无法显示
 	
-//	printf("res%d\r\n",res);
-	printf("out%s\r\n",body);
+	//printf("bodyout:%s\r\n",body);
 	
 	
 	//分离数据 
@@ -267,117 +276,132 @@ void handle_cloud_cmd(char *data)
 			break;
 		case 0x32:
 			//如果是空调命令
-		printf("aircondition\r\n");
+			printf("设置空调...\r\n");
 			if(body[0] == 'O')
 			{
 				switch(body[1])
 				{
 					case 'A':
+						printf("[aircondition]->模式:自动 L\r\n");
 						break;
 					case 'L':
-						printf("aircondition->MODE: L\r\n");
+						printf("[aircondition]->模式: 制冷\r\n");
 						break;
 					case 'R':
+						printf("[aircondition]->模式: 制热\r\n");
 						break;
 					case 'F':
+						printf("[aircondition]->模式: 送风\r\n");
 						break;
 				}
 				
 				switch(body[4])
 				{
 					case 'A':
+						printf("[aircondition]->风速: 自动\r\n");
 						break;
 					case 'L':
+						printf("[aircondition]->风速: 低速\r\n");
 						break;
 					case 'M':
+						printf("[aircondition]->风速: 中速\r\n");
 						break;
 					case 'H':
+						printf("[aircondition]->风速: 高速\r\n");
 						break;
 				}
 				
-				//temperature = body[2`3]
+				sprintf(temperatrueSet,"%c%c",body[2],body[3]);
+				printf("[aircondition]->温度: %s℃\r\n",temperatrueSet);
 			}
 			break;
 		case 0x33:
+			printf("控制窗帘...\r\n");
 			//如果是窗帘命令
 			if(strstr(body,"O"))
 			{
-				printf("curtain_OPEN\r\n");
+				printf("打开窗帘\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("curtain_CLOSE\r\n");
+				printf("关闭窗帘\r\n");
 			}
 			break;
 		case 0x34:
 			//如果是家庭模式命令
-			printf("home_mode%s: \r\n",body);
+			printf("设置家庭模式%s: \r\n",body);
 			if(strstr(body,"O"))
 			{
-				printf("home_mode_OPEN\r\n");
+				printf("打开所有灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("home_mode_CLOSE\r\n");
+				printf("关闭所有灯\r\n");
 			}
 		
 			break;
 		case 0x35:
 			//如果是风扇命令
+			printf("控制风机\r\n");
 			if(strstr(body,"O"))
 			{
-				printf("fanning_OPEN\r\n");
+				printf("打开风机\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("fanning_CLOSE\r\n");
+				printf("关闭风机\r\n");
 			}
 			break;
 		case 0x36:
 			//如果是客厅灯命令
+			printf("控制客厅灯\r\n");
 			if(strstr(body,"O"))
 			{
-				printf("lighting_parlour_OPEN\r\n");
+				printf("打开客厅灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("lighting_parlour_CLOSE\r\n");
+				printf("关闭客厅灯\r\n");
 			}
 			break;
 		case 0x37:
 			//如果是卧室灯命令
+			printf("控制卧室灯\r\n");
 			if(strstr(body,"O"))
 			{
-				printf("lighting_bedroom_OPEN\r\n");
+				printf("打开卧室灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("lighting_bedroom_CLOSE\r\n");
+				printf("关闭卧室灯\r\n");
 			}
 			break;
 		case 0x38:
 			//如果是厨房灯命令
+			printf("控制厨房灯\r\n");
 			if(strstr(body,"O"))
 			{
-				printf("lighting_kitchen_OPEN\r\n");
+				printf("打开厨房灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("lighting_kitchen_CLOSE\r\n");
+				printf("关闭厨房灯\r\n");
 			}
 			break;
 		case 0x39:
 			//如果是浴室灯命令
+			printf("控制浴室灯\r\n");
 			break;
 		case 0x61:
 			//如果是拓展命令
+			printf("设置拓展命令\r\n");
 			if(strstr(body,"O"))
 			{
-				printf("extend_other_OPEN\r\n");
+				printf("拓展开\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
-				printf("extend_other_CLOSE\r\n");
+				printf("拓展关\r\n");
 			}
 			break;
 	}

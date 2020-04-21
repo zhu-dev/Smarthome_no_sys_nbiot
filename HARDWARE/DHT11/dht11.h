@@ -4,8 +4,8 @@
 
 
 //IO方向设置
-#define DHT11_IO_IN()  {GPIOC->MODER&=~(3<<(3*2));GPIOC->MODER|=0<<3*2;}	//PG9输入模式
-#define DHT11_IO_OUT() {GPIOC->MODER&=~(3<<(3*2));GPIOC->MODER|=1<<3*2;} 	//PG9输出模式 
+#define DHT11_IO_IN()  {GPIOC->MODER&=~(3<<(3*2));GPIOC->MODER|=0<<3*2;}	//PC3输入模式
+#define DHT11_IO_OUT() {GPIOC->MODER&=~(3<<(3*2));GPIOC->MODER|=1<<3*2;} 	//PC3输出模式 
 ////IO操作函数											   
 #define	DHT11_DQ_OUT PCout(3) //数据端口	PG9 
 #define	DHT11_DQ_IN  PCin(3)  //数据端口	PG9 
