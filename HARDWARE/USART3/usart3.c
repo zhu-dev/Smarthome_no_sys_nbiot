@@ -26,20 +26,26 @@ void USART3_IRQHandler(void)
 	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)//接收到数据
 	{	 
  
-	res =USART_ReceiveData(USART3);		
-	if((USART3_RX_STA&(1<<15))==0)//接收完的一批数据,还没有被处理,则不再接收其他数据
-	{ 
-		if(USART3_RX_STA<USART3_MAX_RECV_LEN)		//还可以接收数据
+		res =USART_ReceiveData(USART3);//(USART1->DR);	//读取接收到的数据
+		
+		if((USART3_RX_STA&0x8000)==0)//接收未完成
 		{
-			TIM_SetCounter(TIM7,0);//计数器清空        				 
-			if(USART3_RX_STA==0)		
-				TIM_Cmd(TIM7, ENABLE);  //使能定时器7 
-			USART3_RX_BUF[USART3_RX_STA++]=res;		//记录接收到的值	 
-		}else 
-		{
-			USART3_RX_STA|=1<<15;					//强制标记接收完成
-		} 
-	}  	
+			if(USART3_RX_STA&0x4000)//接收到了0x0d
+			{
+				if(res!=0x0a)USART3_RX_STA=0;//接收错误,重新开始
+				else USART3_RX_STA|=0x8000;	//接收完成了 
+			}
+			else //还没收到0X0D
+			{	
+				if(res==0x0d)USART3_RX_STA|=0x4000;
+				else
+				{
+					USART3_RX_BUF[USART3_RX_STA&0X3FFF]=res ;
+					USART3_RX_STA++;
+					if(USART3_RX_STA>(USART3_MAX_RECV_LEN-1))USART3_RX_STA=0;//接收数据错误,重新开始接收	  
+				}		 
+			}
+		}  	
  }										 
 }  
 #endif	
@@ -86,11 +92,6 @@ void usart3_init(u32 bound)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//子优先级3
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
-	TIM7_Int_Init(1000-1,8400-1);		//100ms中断
-	USART3_RX_STA=0;		//清零
-	TIM_Cmd(TIM7, DISABLE); //关闭定时器7
-  	
-
 }
 
 //串口3,printf 函数
@@ -110,7 +111,20 @@ void u3_printf(char* fmt,...)
 	}
 	
 }
- 
+
+void GpuSend(char *buf1)
+{ u8 i=0;
+	while (1)
+	{ 
+		if (buf1[i]!=0)
+		{ 
+			USART_SendData(USART3, buf1[i]); //发送一个 byte 到串口
+			while(USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET){}; //等待发送结束
+			i++;
+		}
+	else return;
+}
+}
  
  
 

@@ -14,12 +14,12 @@
 #include "dht11_2.h"
 #include "dht11_3.h"
 #include "nb_interface.h"
-
+#include "usart3.h"
 
 void check_NB_Status(void);
 void check_DHT11_Status(void);
 void handle_cloud_cmd(char *data);
-
+void UART_LCD_Init(void);
 
 /*收到数据的回调函数 */
 static void urc_recvdata_func( const char *data, uint16_t size )
@@ -42,7 +42,8 @@ static const struct at_urc urc_table[] = {
 
 int main(void)
 { 
- 	
+	u8 count = 0;
+ 	char showbuf[64];
 	//MQ sensor相关变量
 	float ppm1,ppm2,ppm3;
 	uint16_t ppm_1 = 0;
@@ -74,8 +75,10 @@ int main(void)
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	delay_init(168);    //初始化延时函数
 	uart_init(9600);	//初始化串口波特率为9600
+	usart3_init(115200);
 	LED_Init();					//初始化板载测试LED 
-
+	
+	UART_LCD_Init(); //初始化液晶，显示初始值
 	
 	MQ2_Init();						//初始化MQ2
 	HC_SR_Init();		      //人体红外
@@ -86,7 +89,7 @@ int main(void)
 	
 	//NB-COAP相关
 	NBBCxx_init();  //NB M5310A模组驱动初始化
-  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，记得关闭PSM模式！！！！！！！！！
+  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
 	
 	
 	while(1)
@@ -129,6 +132,10 @@ int main(void)
 			if(ppm_2>9999) ppm_2 = 9999;
 			if(ppm_3>9999) ppm_3 = 9999;
 			
+			
+			//显示到液晶
+			
+			
 			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
 			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
 			/*进行格式转换 */
@@ -139,11 +146,10 @@ int main(void)
 			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
 			
 		}
-		
-		delay_ms(20);
-		if(t>200) t=0;
-		t++;
 	
+
+
+
 		
 	}
 }
@@ -408,8 +414,84 @@ void handle_cloud_cmd(char *data)
 }
 
 
+void UART_LCD_Init(void)
+{
+	delay_ms(200);//等待液晶初始化    
+	// \xBF\xAA->开
+	// \xB9\xD8 ->关
+	
+GpuSend("CLS(0);"); //CLS(0);
+GpuSend("W8DF(4,2,'12334566');"); //W8DF(4,2,'12334566');
+GpuSend("W8MU(10,10,90,90,5,0);"); //W8MU(10,10,90,90,5,0);
+GpuSend("W8UE(1);DS16(2,2,'\xBF\xCD\xCC\xFC',7);LABL(24,2,25,88,'26\xA1\xE6',41,1);LABL(16,2,50,88,'\xCA\xAA\xB6\xC8: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;");
+	//W8UE(1);DS16(2,2,'客厅',41);LABL(24,2,25,88,'26℃',41,1);LABL(16,2,50,88,'湿度: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;
+	
+GpuSend("W8UE(2);DS16(2,2,'\xCE\xD4\xCA\xD2',7);LABL(24,2,25,88,'26\xA1\xE6',41,1);LABL(16,2,50,88,'\xCA\xAA\xB6\xC8: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;"); 
+	//W8UE(2);DS16(2,2,'卧室',41);LABL(24,2,25,88,'26℃',41,1);LABL(16,2,50,88,'湿度: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;
+	
+GpuSend("W8UE(4);DS16(2,2,'\xB3\xF8\xB7\xBF',7);LABL(24,2,25,88,'26\xA1\xE6',41,1);LABL(16,2,50,88,'\xCA\xAA\xB6\xC8: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;");
+	//W8UE(4);DS16(2,2,'厨房',41);LABL(24,2,25,88,'26℃',41,1);LABL(16,2,50,88,'湿度: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;
+	
+GpuSend("W8UE(5);DS16(2,2,'\xD4\xA4\xC1\xF4',41);LABL(24,2,25,88,'26\xA1\xE6',41,1);LABL(16,2,50,88,'\xCA\xAA\xB6\xC8: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;"); 
+	//W8UE(5);DS16(2,2,'预留',41);LABL(24,2,25,88,'26℃',41,1);LABL(16,2,50,88,'湿度: 99%',41,1);LABL(16,2,68,88,'smoke:9999',41,1);SXY(0,0);;
+	
+GpuSend("W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: 25\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: \xD7\xD4\xB6\xAF',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: \xD7\xD4\xB6\xAF',41,1);SXY(0,0);;"); 
+	//W8UE(3);PIC(2,2,14);DS16(30,2,'空调设置',15);LABL(16,2,32,88,'设定: 25℃',41,1);LABL(16,2,50,88,'模式: 自动',41,1);LABL(16,2,68,88,'风速: 自动',41,1);SXY(0,0);;
+	
+GpuSend("W8UE(6);PIC(2,2,20);DS16(30,2,'\xB5\xC6\xB9\xE2\xD7\xB4\xCC\xAC',15);LABL(16,2,32,88,'\xBF\xCD\xCC\xFC: \xB9\xD8',41,1);LABL(16,2,50,88,'\xB3\xF8\xB7\xBF: \xB9\xD8',41,1);LABL(16,2,68,88,'\xB3\xF8\xB7\xBF: \xB9\xD8',41,1);SXY(0,0);;"); 
+	//W8UE(6);PIC(2,2,20);DS16(30,2,'灯光状态',15);LABL(16,2,32,88,'客厅: 关',41,1);LABL(16,2,50,88,'厨房: 关',41,1);LABL(16,2,68,88,'厨房: 关',41,1);SXY(0,0);;
+	
+GpuSend("W8SE(0);"); //W8SE(0);
+GpuSend("SBC(0);"); //SBC(0);
+GpuSend("\r\n");
+
+		
+	delay_ms(1000);//保持命令发送稳定
+}
 
 
 
+void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke)
+{
+	char showbuf[128];
+	
+	switch(room)
+	{
+		case 1:
+			//显示客厅数据
+			//memset(showbuf,0x00,sizeof(showbuf));
+			sprintf(showbuf,"W8UE(1);DS16(2,2,'客厅',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			GpuSend(showbuf);
+			break;
+		case 2:
+			//显示卧室数据
+			//memset(showbuf,0x00,sizeof(showbuf));
+			sprintf(showbuf,"W8UE(1);DS16(2,2,'卧室',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			GpuSend(showbuf);
+			break;
+		case 3:
+			//显示厨房数据
+			//memset(showbuf,0x00,sizeof(showbuf));
+			sprintf(showbuf,"W8UE(1);DS16(2,2,'厨房',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			GpuSend(showbuf);
+			break;
+	}
+	
+}
+
+void show_airconditin_info(char *temperatrue,char mode,char windspeed)
+{
+	char showbuf[128];
+	
+	switch(mode)
+	{
+		case 'A':
+			
+			break;
+	}
+	
+	sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: \xD7\xD4\xB6\xAF',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: \xD7\xD4\xB6\xAF',41,1);SXY(0,0);;\r\n",temperatrue);
+	GpuSend(showbuf);
+}
 
 

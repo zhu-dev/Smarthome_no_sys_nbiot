@@ -53,3 +53,4 @@
 ..\obj\main.o: ..\HARDWARE\DHT11\dht11_3.h
 ..\obj\main.o: ..\NBIOT\nb_interface.h
 ..\obj\main.o: ..\NBIOT\nb_at.h
+..\obj\main.o: ..\HARDWARE\USART3\usart3.h
