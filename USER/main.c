@@ -20,6 +20,11 @@ void check_NB_Status(void);
 void check_DHT11_Status(void);
 void handle_cloud_cmd(char *data);
 void UART_LCD_Init(void);
+void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke);
+void show_airconditin_info(char *temperatrue,char mode,char windspeed);
+
+
+
 
 /*收到数据的回调函数 */
 static void urc_recvdata_func( const char *data, uint16_t size )
@@ -134,20 +139,24 @@ int main(void)
 			
 			
 			//显示到液晶
-			
+			show_room_info(1,temperature1,humidity1,ppm_1);
+			show_room_info(2,temperature2,humidity2,ppm_2);
+			show_room_info(3,temperature3,humidity3,ppm_3);
 			
 			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
 			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
 			/*进行格式转换 */
 			memset(tmpBuf2, 0x00, sizeof(tmpBuf2) );
-			hexToStr( tmpBuf1, tmpBuf2 );
+			hexToStr( tmpBuf1, tmpBuf2 );//转化为16进制字符串
 			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
-			NBBCxx_setNMGS_char( tmpBuf3 );
+			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
 			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
 			
 		}
 	
-
+		delay_ms(20);
+		if(t>200) t = 0;
+		t++;
 
 
 		
@@ -319,6 +328,9 @@ void handle_cloud_cmd(char *data)
 				
 				sprintf(temperatrueSet,"%c%c",body[2],body[3]);
 				printf("[aircondition]->温度: %s℃\r\n",temperatrueSet);
+				//显示到液晶
+				show_airconditin_info(temperatrueSet,body[1],body[4]);
+				
 			}
 			break;
 		case 0x33:
@@ -482,16 +494,46 @@ void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke)
 void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 {
 	char showbuf[128];
+	char *mode_str;
+	char *windspeed_str;
 	
 	switch(mode)
 	{
 		case 'A':
-			
+			mode_str = "自动";
+			break;
+		case 'L':
+			mode_str = "制冷";
+			break;
+		case 'R':
+			mode_str = "制热";
+			break;
+		case 'F':
+			mode_str = "送风";
 			break;
 	}
 	
-	sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: \xD7\xD4\xB6\xAF',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: \xD7\xD4\xB6\xAF',41,1);SXY(0,0);;\r\n",temperatrue);
-	GpuSend(showbuf);
+		switch(windspeed)
+	{
+		case 'A':
+			windspeed_str = "送风";
+			break;
+		case 'L':
+			windspeed_str = "低速";
+			break;
+		case 'M':
+			windspeed_str = "中速";
+			break;
+		case 'H':
+			windspeed_str = "高速";
+			break;
+	}
+	
+			
+			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: %s',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: %s',41,1);SXY(0,0);;",temperatrue,mode_str,windspeed_str);
+			GpuSend(showbuf);
+	
+
 }
 
 
