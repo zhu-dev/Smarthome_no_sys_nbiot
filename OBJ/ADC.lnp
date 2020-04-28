@@ -13,6 +13,7 @@
 "..\obj\dht11_3.o"
 "..\obj\timer.o"
 "..\obj\usart3.o"
+"..\obj\uart4.o"
 "..\obj\delay.o"
 "..\obj\sys.o"
 "..\obj\usart.o"
@@ -29,6 +30,8 @@
 "..\obj\stm32f4xx_dma.o"
 "..\obj\nb_at.o"
 "..\obj\nb_interface.o"
+"..\obj\sim800a.o"
+"..\obj\usart6.o"
 --strict --scatter "..\OBJ\ADC.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

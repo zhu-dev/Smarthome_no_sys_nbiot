@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\LED;..\HARDWARE\LCD;..\HARDWARE\ADC;..\FWLIB\inc;..\HARDWARE\MQ_Sensor;..\HARDWARE\EXTI;..\HARDWARE\SC_HR501;..\HARDWARE\DHT11;..\HARDWARE\Motor;..\HARDWARE\Rain_detect;..\HARDWARE\OLED;..\ATK-ESP8266;..\HARDWARE\TIMER;..\HARDWARE\USART3;..\NBIOT</IncludePath>
+              <IncludePath>..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\HARDWARE\LED;..\HARDWARE\LCD;..\HARDWARE\ADC;..\FWLIB\inc;..\HARDWARE\MQ_Sensor;..\HARDWARE\EXTI;..\HARDWARE\SC_HR501;..\HARDWARE\DHT11;..\HARDWARE\Motor;..\HARDWARE\Rain_detect;..\HARDWARE\OLED;..\ATK-ESP8266;..\HARDWARE\TIMER;..\HARDWARE\USART3;..\NBIOT;..\SIM800A;..\HARDWARE\UART4</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -455,6 +455,11 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\USART3\usart3.c</FilePath>
             </File>
+            <File>
+              <FileName>uart4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\UART4\uart4.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -564,6 +569,21 @@
               <FileName>nb_interface.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\NBIOT\nb_interface.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>SIM800A</GroupName>
+          <Files>
+            <File>
+              <FileName>sim800a.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SIM800A\sim800a.c</FilePath>
+            </File>
+            <File>
+              <FileName>usart6.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SIM800A\usart6.c</FilePath>
             </File>
           </Files>
         </Group>

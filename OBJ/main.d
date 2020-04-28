@@ -54,3 +54,6 @@
 ..\obj\main.o: ..\NBIOT\nb_interface.h
 ..\obj\main.o: ..\NBIOT\nb_at.h
 ..\obj\main.o: ..\HARDWARE\USART3\usart3.h
+..\obj\main.o: ..\SIM800A\sim800a.h
+..\obj\main.o: ..\SIM800A\usart6.h
+..\obj\main.o: ..\HARDWARE\UART4\uart4.h

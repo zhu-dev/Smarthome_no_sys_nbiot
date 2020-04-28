@@ -15,6 +15,8 @@
 #include "dht11_3.h"
 #include "nb_interface.h"
 #include "usart3.h"
+#include "sim800a.h"
+#include "uart4.h"
 
 void check_NB_Status(void);
 void check_DHT11_Status(void);
@@ -79,84 +81,86 @@ int main(void)
 	//外设初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	delay_init(168);    //初始化延时函数
-	uart_init(9600);	//初始化串口波特率为9600
+	uart_init(115200);	//初始化串口波特率为9600
 	usart3_init(115200);
+	uart4_init(115200);
 	LED_Init();					//初始化板载测试LED 
 	
 	UART_LCD_Init(); //初始化液晶，显示初始值
 	
-	MQ2_Init();						//初始化MQ2
-	HC_SR_Init();		      //人体红外
+//	MQ2_Init();						//初始化MQ2
+//	HC_SR_Init();		      //人体红外
 
-	//DHT11相关
-	check_DHT11_Status(); //检查DHT11硬件是否连接正常
-	ADC_SoftwareStartConv(ADC1); //开始ADC转换
-	
-	//NB-COAP相关
-	NBBCxx_init();  //NB M5310A模组驱动初始化
-  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
+//	//DHT11相关
+//	check_DHT11_Status(); //检查DHT11硬件是否连接正常
+//	ADC_SoftwareStartConv(ADC1); //开始ADC转换
+//	
+//	//NB-COAP相关
+//	NBBCxx_init();  //NB M5310A模组驱动初始化
+//  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
 	
 	
 	while(1)
 	{ 
+		u4_printf("123\r\n");
 		
-		NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取
+		//NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取
 		
-		if(t%100 == 0)
-		{
-			
-			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
-			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
-			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
-			
-			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
-			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
-			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
-			
-			if(temperature1>99) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大，用初值代替
-			if(temperature2>99) temperature2 = 26;
-			if(temperature3>99) temperature3 = 26;
+//		if(t%100 == 0)
+//		{
+//			
+//			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
+//			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
+//			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
+//			
+//			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
+//			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
+//			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
+//			
+//			if(temperature1>99) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+//			if(temperature2>99) temperature2 = 26;
+//			if(temperature3>99) temperature3 = 26;
 
-			if(humidity1>99) humidity1 = 50; //设备上电瞬间有一个垃圾值，会很大，用初值代替
-			if(humidity2>99) humidity2 = 50;
-			if(humidity3>99) humidity3 = 50;
-			
-			ppm1 = MQ2_GetPPM(0);
-			ppm2 = MQ2_GetPPM(1);
-			ppm3 = MQ2_GetPPM(2);
-			
-			ppm_1 = ppm1;
-			ppm_2 = ppm2;
-			ppm_3 = ppm3;
-			
-			printf("[DATA]ppm1:%.2f \r\n",ppm1);
-			printf("[DATA]ppm2:%.2f \r\n",ppm2);
-			printf("[DATA]ppm3:%.2f \r\n",ppm3);
-			
-			if(ppm_1>9999) ppm_1 = 9999;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
-			if(ppm_2>9999) ppm_2 = 9999;
-			if(ppm_3>9999) ppm_3 = 9999;
-			
-			
-			//显示到液晶
-			show_room_info(1,temperature1,humidity1,ppm_1);
-			show_room_info(2,temperature2,humidity2,ppm_2);
-			show_room_info(3,temperature3,humidity3,ppm_3);
-			
-			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
-			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
-			/*进行格式转换 */
-			memset(tmpBuf2, 0x00, sizeof(tmpBuf2) );
-			hexToStr( tmpBuf1, tmpBuf2 );//转化为16进制字符串
-			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
-			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
-			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
-			
-		}
-	
-		delay_ms(20);
-		if(t>200) t = 0;
-		t++;
+//			if(humidity1>99) humidity1 = 50; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+//			if(humidity2>99) humidity2 = 50;
+//			if(humidity3>99) humidity3 = 50;
+//			
+//			ppm1 = MQ2_GetPPM(0);
+//			ppm2 = MQ2_GetPPM(1);
+//			ppm3 = MQ2_GetPPM(2);
+//			
+//			ppm_1 = ppm1;
+//			ppm_2 = ppm2;
+//			ppm_3 = ppm3;
+//			
+//			printf("[DATA]ppm1:%.2f \r\n",ppm1);
+//			printf("[DATA]ppm2:%.2f \r\n",ppm2);
+//			printf("[DATA]ppm3:%.2f \r\n",ppm3);
+//			
+//			if(ppm_1>9999) ppm_1 = 9999;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
+//			if(ppm_2>9999) ppm_2 = 9999;
+//			if(ppm_3>9999) ppm_3 = 9999;
+//			
+//			
+//			//显示到液晶
+//			show_room_info(1,temperature1,humidity1,ppm_1);
+//			show_room_info(2,temperature2,humidity2,ppm_2);
+//			show_room_info(3,temperature3,humidity3,ppm_3);
+//			
+//			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
+//			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
+//			/*进行格式转换 */
+//			memset(tmpBuf2, 0x00, sizeof(tmpBuf2) );
+//			hexToStr( tmpBuf1, tmpBuf2 );//转化为16进制字符串
+//			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
+//			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
+//			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
+//			
+//		}
+//	
+//		delay_ms(20);
+//		if(t>200) t = 0;
+//		t++;
 
 
 		
