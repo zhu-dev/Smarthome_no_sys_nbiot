@@ -14,6 +14,6 @@ extern u16 UART4_RX_STA;   						//接收数据状态
 
 void uart4_init(u32 bound);				//串口4初始化 
 void u4_printf(char* fmt, ...);
-
-
+void txtToVoiceInit(u8 level);
+void playAudio(u8 index);
 #endif

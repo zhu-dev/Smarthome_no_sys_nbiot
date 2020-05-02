@@ -14,6 +14,7 @@
 "..\obj\timer.o"
 "..\obj\usart3.o"
 "..\obj\uart4.o"
+"..\obj\light.o"
 "..\obj\delay.o"
 "..\obj\sys.o"
 "..\obj\usart.o"

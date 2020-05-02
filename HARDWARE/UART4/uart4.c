@@ -108,3 +108,33 @@ void u4_printf(char* fmt,...)
 	
 }
 
+void sendData(u8 buf[],u8 len)
+{
+	u8 i,j;
+	i = len;
+		for(j=0;j<i;j++)//循环发送数据
+	{
+	  while(USART_GetFlagStatus(UART4,USART_FLAG_TC)==RESET);  //等待上次传输完成 
+		USART_SendData(UART4,buf[j]); 	 //发送数据到串口6
+	}
+}
+
+void txtToVoiceInit(u8 level)
+{
+	u8 buf[5] = {0x7E,0x03,0x06,0x16,0xEF};
+	buf[3] = level;
+	printf("123");
+	sendData(buf,5);
+	delay_ms(50);
+}
+
+void playAudio(u8 index)
+{
+	u8 buf[6] = {0x7E,0x04,0x03,0x00,0x01,0xEF};
+	buf[4] = index;
+	sendData(buf,6);
+	delay_ms(50);
+}
+
+
+

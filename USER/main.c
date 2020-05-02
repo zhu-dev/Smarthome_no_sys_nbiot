@@ -17,6 +17,7 @@
 #include "usart3.h"
 #include "sim800a.h"
 #include "uart4.h"
+#include "light.h"
 
 void check_NB_Status(void);
 void check_DHT11_Status(void);
@@ -81,10 +82,15 @@ int main(void)
 	//外设初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	delay_init(168);    //初始化延时函数
-	uart_init(115200);	//初始化串口波特率为9600
+	uart_init(115200);	//初始化串口波特率为115200
+	
 	usart3_init(115200);
-	uart4_init(115200);
+	uart4_init(9600);
+	
 	LED_Init();					//初始化板载测试LED 
+	
+	light_init();
+	fan_init();
 	
 	UART_LCD_Init(); //初始化液晶，显示初始值
 	
@@ -99,11 +105,14 @@ int main(void)
 //	NBBCxx_init();  //NB M5310A模组驱动初始化
 //  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
 	
+	//txtToVoiceInit(27);
 	
+	LED0 = 0;
 	while(1)
 	{ 
-		u4_printf("123\r\n");
-		
+		printf("ok\r\n");
+		//playAudio(3);
+		delay_ms(5000);
 		//NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取
 		
 //		if(t%100 == 0)
