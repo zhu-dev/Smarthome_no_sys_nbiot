@@ -16,6 +16,7 @@
 #include "nb_interface.h"
 #include "usart3.h"
 #include "sim800a.h"
+#include "usart6.h"
 #include "uart4.h"
 #include "light.h"
 
@@ -23,7 +24,7 @@ void check_NB_Status(void);
 void check_DHT11_Status(void);
 void handle_cloud_cmd(char *data);
 void UART_LCD_Init(void);
-void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke);
+void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke);
 void show_airconditin_info(char *temperatrue,char mode,char windspeed);
 
 
@@ -54,9 +55,9 @@ int main(void)
  	char showbuf[64];
 	//MQ sensor相关变量
 	float ppm1,ppm2,ppm3;
-	uint16_t ppm_1 = 0;
-	uint16_t ppm_2 = 0;
-	uint16_t ppm_3 = 0;
+	u16 ppm_1 = 0;
+	u16 ppm_2 = 0;
+	u16 ppm_3 = 0;
 	
 	//DHT11相关变量,赋初值，避免引传感器出错，导致上报数据异常，引起平台和应用服务器报错
 	u8 t=0;			    
@@ -86,6 +87,7 @@ int main(void)
 	
 	usart3_init(115200);
 	uart4_init(9600);
+	usart6_init(115200);
 	
 	LED_Init();					//初始化板载测试LED 
 	
@@ -94,82 +96,93 @@ int main(void)
 	
 	UART_LCD_Init(); //初始化液晶，显示初始值
 	
-//	MQ2_Init();						//初始化MQ2
-//	HC_SR_Init();		      //人体红外
+	MQ2_Init();						//初始化MQ2
+	//HC_SR_Init();		      //人体红外
 
-//	//DHT11相关
-//	check_DHT11_Status(); //检查DHT11硬件是否连接正常
-//	ADC_SoftwareStartConv(ADC1); //开始ADC转换
-//	
-//	//NB-COAP相关
-//	NBBCxx_init();  //NB M5310A模组驱动初始化
-//  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
+	//DHT11相关
+	check_DHT11_Status(); //检查DHT11硬件是否连接正常
+	ADC_SoftwareStartConv(ADC1); //开始ADC转换
 	
-	//txtToVoiceInit(27);
+
+	//NB-COAP相关
+	NBBCxx_init();  //NB M5310A模组驱动初始化
+  check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
+
+
+	sim800a_pdu_init(); //初始化SIM800A
+
+	txtToVoiceInit(27); //初始化语音模块
 	
 	LED0 = 0;
 	while(1)
 	{ 
-		printf("ok\r\n");
-		//playAudio(3);
-		delay_ms(5000);
-		//NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取
 		
-//		if(t%100 == 0)
-//		{
-//			
-//			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
-//			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
-//			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
-//			
-//			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
-//			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
-//			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
-//			
-//			if(temperature1>99) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大，用初值代替
-//			if(temperature2>99) temperature2 = 26;
-//			if(temperature3>99) temperature3 = 26;
+//		printf("ok2\r\n");
+//		playAudio(3);
+//		delay_ms(3000);
+//		//sim800a_send_warning();
+//		delay_ms(2000);
+		
+		
+		NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取，NB模组延迟真尼玛高  fuck
+		
+		if(t%400 == 0)
+		{
+			LED0 = !LED0;
+			DHT11_Read_Data(&temperature1,&humidity1);		//读取温湿度值	
+			DHT11_2_Read_Data(&temperature2,&humidity2);		//读取温湿度值			
+			DHT11_3_Read_Data(&temperature3,&humidity3);		//读取温湿度值
+			
+			printf("[DATA]temperature1:%d  humidity:%d\r\n",temperature1,humidity1);
+			printf("[DATA]temperature2:%d  humidity2:%d\r\n",temperature2,humidity2);
+			printf("[DATA]temperature3:%d  humidity3:%d\r\n",temperature3,humidity3);
+			
+			if(temperature1>99) temperature1 = 26; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+			if(temperature2>99) temperature2 = 26;
+			if(temperature3>99) temperature3 = 26;
 
-//			if(humidity1>99) humidity1 = 50; //设备上电瞬间有一个垃圾值，会很大，用初值代替
-//			if(humidity2>99) humidity2 = 50;
-//			if(humidity3>99) humidity3 = 50;
-//			
-//			ppm1 = MQ2_GetPPM(0);
-//			ppm2 = MQ2_GetPPM(1);
-//			ppm3 = MQ2_GetPPM(2);
-//			
-//			ppm_1 = ppm1;
-//			ppm_2 = ppm2;
-//			ppm_3 = ppm3;
-//			
-//			printf("[DATA]ppm1:%.2f \r\n",ppm1);
-//			printf("[DATA]ppm2:%.2f \r\n",ppm2);
-//			printf("[DATA]ppm3:%.2f \r\n",ppm3);
-//			
-//			if(ppm_1>9999) ppm_1 = 9999;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
-//			if(ppm_2>9999) ppm_2 = 9999;
-//			if(ppm_3>9999) ppm_3 = 9999;
-//			
-//			
-//			//显示到液晶
-//			show_room_info(1,temperature1,humidity1,ppm_1);
-//			show_room_info(2,temperature2,humidity2,ppm_2);
-//			show_room_info(3,temperature3,humidity3,ppm_3);
-//			
-//			sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
-//			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
-//			/*进行格式转换 */
-//			memset(tmpBuf2, 0x00, sizeof(tmpBuf2) );
-//			hexToStr( tmpBuf1, tmpBuf2 );//转化为16进制字符串
-//			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
-//			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
-//			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
-//			
-//		}
-//	
-//		delay_ms(20);
-//		if(t>200) t = 0;
-//		t++;
+			if(humidity1>99) humidity1 = 50; //设备上电瞬间有一个垃圾值，会很大，用初值代替
+			if(humidity2>99) humidity2 = 50;
+			if(humidity3>99) humidity3 = 50;
+			
+			ppm1 = MQ2_GetPPM(0);
+			ppm2 = MQ2_GetPPM(1);
+			ppm3 = MQ2_GetPPM(2);
+			
+			printf("[DATA]ppm1:%.2f\r\n",ppm1);
+			printf("[DATA]ppm2:%.2f\r\n",ppm2);
+			printf("[DATA]ppm3:%.2f\r\n",ppm3);
+			
+			ppm_1 = ppm1;
+			ppm_2 = ppm2;
+			ppm_3 = ppm3;
+			
+			if(ppm_1>9999) ppm_1 = 9999;  //大于10000ppm 直接报最浓,数值达到阈值后，可以减少传输的字长，减少流量
+			if(ppm_2>9999) ppm_2 = 9999;
+			if(ppm_3>9999) ppm_3 = 9999;
+			
+		
+			//sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
+			sprintf( tmpBuf1, "%2d%2d%4d%2d%2d%4d%2d%2d%4d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
+			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
+			/*进行格式转换 */
+			memset(tmpBuf2, 0x00, sizeof(tmpBuf2));
+			hexToStr( tmpBuf1, tmpBuf2 );//转化为16进制字符串
+			sprintf(tmpBuf3,"%s%s",headstr,tmpBuf2);
+			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
+			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
+			
+			
+			//显示到液晶
+			show_room_info(1,temperature1,humidity1,ppm1);
+			show_room_info(2,temperature2,humidity2,ppm2);
+			show_room_info(3,temperature3,humidity3,ppm3);
+		}
+	
+	
+		delay_ms(20);
+		if(t>400) t = 0;
+		t++;
 
 
 		
@@ -338,12 +351,13 @@ void handle_cloud_cmd(char *data)
 						printf("[aircondition]->风速: 高速\r\n");
 						break;
 				}
-				
+				 
 				sprintf(temperatrueSet,"%c%c",body[2],body[3]);
 				printf("[aircondition]->温度: %s℃\r\n",temperatrueSet);
 				//显示到液晶
+				printf("[debug]1");
 				show_airconditin_info(temperatrueSet,body[1],body[4]);
-				
+				printf("[debug]4");
 			}
 			break;
 		case 0x33:
@@ -376,10 +390,12 @@ void handle_cloud_cmd(char *data)
 			printf("控制风机\r\n");
 			if(strstr(body,"O"))
 			{
+				Fan = 1;
 				printf("打开风机\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
+				Fan = 0;
 				printf("关闭风机\r\n");
 			}
 			break;
@@ -388,10 +404,12 @@ void handle_cloud_cmd(char *data)
 			printf("控制客厅灯\r\n");
 			if(strstr(body,"O"))
 			{
+				Parlour_light = 1;
 				printf("打开客厅灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
+				Parlour_light = 0;
 				printf("关闭客厅灯\r\n");
 			}
 			break;
@@ -400,10 +418,12 @@ void handle_cloud_cmd(char *data)
 			printf("控制卧室灯\r\n");
 			if(strstr(body,"O"))
 			{
+				Bedroom_light = 1;
 				printf("打开卧室灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
+				Bedroom_light = 0;
 				printf("关闭卧室灯\r\n");
 			}
 			break;
@@ -412,10 +432,12 @@ void handle_cloud_cmd(char *data)
 			printf("控制厨房灯\r\n");
 			if(strstr(body,"O"))
 			{
+				Kitchen_light = 1;
 				printf("打开厨房灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
+				Kitchen_light = 0;
 				printf("关闭厨房灯\r\n");
 			}
 			break;
@@ -476,28 +498,39 @@ GpuSend("\r\n");
 
 
 
-void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke)
+void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke)
 {
 	char showbuf[128];
+	u8 room_temp;
+	u8 temperature_temp;
+	u8 humidity_temp;
+	u16 smoke_temp;
+	
+	temperature_temp = temperature;
+	humidity_temp = humidity;
+	smoke_temp = smoke;
 	
 	switch(room)
 	{
 		case 1:
 			//显示客厅数据
-			//memset(showbuf,0x00,sizeof(showbuf));
-			sprintf(showbuf,"W8UE(1);DS16(2,2,'客厅',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			memset(showbuf,0x00,sizeof(showbuf));
+			printf("[debug]smoke_temp1:%d\r\n",smoke_temp);
+			sprintf(showbuf,"W8UE(1);DS16(2,2,'客厅',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d％',41,1);LABL(16,2,68,88,'smoke:%d',41,1);SXY(0,0);;\r\n",temperature_temp,humidity_temp,smoke_temp);
 			GpuSend(showbuf);
 			break;
 		case 2:
 			//显示卧室数据
-			//memset(showbuf,0x00,sizeof(showbuf));
-			sprintf(showbuf,"W8UE(1);DS16(2,2,'卧室',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			memset(showbuf,0x00,sizeof(showbuf));
+			printf("[debug]smoke_temp2:%d\r\n",smoke_temp);
+			sprintf(showbuf,"W8UE(2);DS16(2,2,'卧室',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d％',41,1);LABL(16,2,68,88,'smoke:%d',41,1);SXY(0,0);;\r\n",temperature_temp,humidity_temp,smoke_temp);
 			GpuSend(showbuf);
 			break;
 		case 3:
 			//显示厨房数据
-			//memset(showbuf,0x00,sizeof(showbuf));
-			sprintf(showbuf,"W8UE(1);DS16(2,2,'厨房',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d%',41,1);LABL(16,2,68,88,'smoke:%4d',41,1);SXY(0,0);;\r\n",temperature,humidity,smoke);
+			memset(showbuf,0x00,sizeof(showbuf));
+			printf("[debug]smoke_temp3:%d\r\n",smoke_temp);
+			sprintf(showbuf,"W8UE(4);DS16(2,2,'厨房',7);LABL(24,2,25,88,'%2d℃',41,1);LABL(16,2,50,88,'湿度: %2d％',41,1);LABL(16,2,68,88,'smoke:%d',41,1);SXY(0,0);;\r\n",temperature_temp,humidity_temp,smoke_temp);
 			GpuSend(showbuf);
 			break;
 	}
@@ -506,9 +539,23 @@ void show_room_info(u8 room,u8 temperature,u8 humidity,uint16_t smoke)
 
 void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 {
+	// \xBF\xAA  开
+	// \xB9\xD8  关
+	
+	// \xD7\xD4\xB6\xAF		自动
+	// \xD6\xC6\xC0\xE4   制冷
+	// \xD6\xC6\xC8\xC8   制热
+	// \xCB\xCD\xB7\xE7		送风
+	
+	// \xD7\xD4\xB6\xAF		自动
+	// \xB5\xCD\xCB\xD9		低速
+	// \xD6\xD0\xCB\xD9		中速
+	// \xB8\xDF\xCB\xD9		高速
 	char showbuf[128];
 	char *mode_str;
 	char *windspeed_str;
+	
+	//u8 temperatrue_temp;
 	
 	switch(mode)
 	{
@@ -529,7 +576,7 @@ void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 		switch(windspeed)
 	{
 		case 'A':
-			windspeed_str = "送风";
+			windspeed_str = "自动";
 			break;
 		case 'L':
 			windspeed_str = "低速";
@@ -541,12 +588,19 @@ void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 			windspeed_str = "高速";
 			break;
 	}
-	
-			
-			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: %s',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: %s',41,1);SXY(0,0);;",temperatrue,mode_str,windspeed_str);
+		
+//			printf("[debug]temperatrue->%s\r\n",temperatrue);
+//			printf("[debug]mode_str->%x\r\n",mode_str);
+//			printf("[debug]windspeed_str->%x\r\n",windspeed_str);
+			memset(showbuf,0x00,sizeof(showbuf));
+				printf("[debug]1");
+//			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: %x',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: %x',41,1);SXY(0,0);;",temperatrue,mode_str,windspeed_str);
+			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'空调设置',15);LABL(16,2,32,88,'设定: %s℃',41,1);LABL(16,2,50,88,'模式: %s',41,1);LABL(16,2,68,88,'风速: %s',41,1);SXY(0,0);;\r\n",temperatrue,mode_str,windspeed_str);
+			printf("[debug]2");
 			GpuSend(showbuf);
-	
-
+			printf("[debug]3");
 }
+
+
 
 

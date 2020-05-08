@@ -119,6 +119,9 @@ void  Get_ADC_values(void)
 	for(i = 0;i<3;i++)
 	{
 		j = 0;
+		sum = 0;
+		count = 0;
+		
 		while(j<10)
 		{
 				if(results[j][i]>0)
@@ -129,8 +132,7 @@ void  Get_ADC_values(void)
 				j++;
 		}
 		res[i] = sum/count;
-		sum = 0;
-		count = 0;
+
 	}
 }
 
