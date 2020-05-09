@@ -26,9 +26,13 @@ void handle_cloud_cmd(char *data);
 void UART_LCD_Init(void);
 void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke);
 void show_airconditin_info(char *temperatrue,char mode,char windspeed);
+void show_room_light_info(void);
 
+u8 Parlour_light_state;
+u8 Bedroom_light_state;
+u8 Kitchen_light_state;
 
-
+u8 air_conditian_state;
 
 /*收到数据的回调函数 */
 static void urc_recvdata_func( const char *data, uint16_t size )
@@ -51,6 +55,7 @@ static const struct at_urc urc_table[] = {
 
 int main(void)
 { 
+	
 	u8 count = 0;
  	char showbuf[64];
 	//MQ sensor相关变量
@@ -79,6 +84,11 @@ int main(void)
   at_client_t			client = &clientObj;
   NBBCxx_setUrcTable( client, urc_table, sizeof(urc_table) / sizeof(urc_table[0]) );
 	
+	Parlour_light_state = 0;
+	Bedroom_light_state = 0;
+	Kitchen_light_state = 0;
+	
+	air_conditian_state = 0;
 	
 	//外设初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
@@ -161,6 +171,7 @@ int main(void)
 			if(ppm_2>9999) ppm_2 = 9999;
 			if(ppm_3>9999) ppm_3 = 9999;
 			
+
 		
 			//sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
 			sprintf( tmpBuf1, "%2d%2d%4d%2d%2d%4d%2d%2d%4d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
@@ -172,14 +183,30 @@ int main(void)
 			NBBCxx_setNMGS_char( tmpBuf3 );//发送到模组
 			printf("[INFO]coap send HEX data:%s\r\n",tmpBuf3);
 			
+		
 			
 			//显示到液晶
 			show_room_info(1,temperature1,humidity1,ppm1);
 			show_room_info(2,temperature2,humidity2,ppm2);
 			show_room_info(3,temperature3,humidity3,ppm3);
+			
+			if(temperature1>45||temperature2>45||temperature3>45)
+			{
+					playAudio(1);
+					delay_ms(1000);
+			}
+
+			
+			if(ppm_1>2000||ppm_2>2000||ppm_3>2000)
+			{
+					playAudio(2);
+					delay_ms(1000);
+			}	
+			
+			
 		}
 	
-	
+		
 		delay_ms(20);
 		if(t>400) t = 0;
 		t++;
@@ -320,6 +347,14 @@ void handle_cloud_cmd(char *data)
 			printf("设置空调...\r\n");
 			if(body[0] == 'O')
 			{
+				
+				if(!air_conditian_state)
+				{
+						playAudio(3);
+						delay_ms(500);
+						air_conditian_state = 1;
+				}
+
 				switch(body[1])
 				{
 					case 'A':
@@ -357,7 +392,17 @@ void handle_cloud_cmd(char *data)
 				//显示到液晶
 				printf("[debug]1");
 				show_airconditin_info(temperatrueSet,body[1],body[4]);
-				printf("[debug]4");
+			}
+			else if(body[0] == 'C')
+			{
+				
+				//空调已关闭
+				if(air_conditian_state)
+				{
+						playAudio(4);
+						delay_ms(500);
+						air_conditian_state = 0;
+				}
 			}
 			break;
 		case 0x33:
@@ -377,11 +422,32 @@ void handle_cloud_cmd(char *data)
 			printf("设置家庭模式%s: \r\n",body);
 			if(strstr(body,"O"))
 			{
+
 				printf("打开所有灯\r\n");
+				Parlour_light = 1;
+				Bedroom_light = 1;
+				Kitchen_light = 1;
+				
+				Parlour_light_state = 1;
+				Bedroom_light_state = 1;
+				Kitchen_light_state = 1;				
+				
+				playAudio(5);
+				delay_ms(500);
 			}
 			else if(strstr(body,"C"))
 			{
 				printf("关闭所有灯\r\n");
+				Parlour_light = 0;
+				Bedroom_light = 0;
+				Kitchen_light = 0;
+				
+				Parlour_light_state = 0;
+				Bedroom_light_state = 0;
+				Kitchen_light_state = 0;
+				
+				playAudio(6);
+				delay_ms(500);
 			}
 		
 			break;
@@ -405,11 +471,13 @@ void handle_cloud_cmd(char *data)
 			if(strstr(body,"O"))
 			{
 				Parlour_light = 1;
+				Parlour_light_state = 1;
 				printf("打开客厅灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
 				Parlour_light = 0;
+				Parlour_light_state = 0;
 				printf("关闭客厅灯\r\n");
 			}
 			break;
@@ -419,11 +487,13 @@ void handle_cloud_cmd(char *data)
 			if(strstr(body,"O"))
 			{
 				Bedroom_light = 1;
+				Bedroom_light_state = 1;
 				printf("打开卧室灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
 				Bedroom_light = 0;
+				Bedroom_light_state = 0;
 				printf("关闭卧室灯\r\n");
 			}
 			break;
@@ -433,11 +503,13 @@ void handle_cloud_cmd(char *data)
 			if(strstr(body,"O"))
 			{
 				Kitchen_light = 1;
+				Kitchen_light_state = 1; 
 				printf("打开厨房灯\r\n");
 			}
 			else if(strstr(body,"C"))
 			{
 				Kitchen_light = 0;
+				Kitchen_light_state = 0;
 				printf("关闭厨房灯\r\n");
 			}
 			break;
@@ -458,6 +530,8 @@ void handle_cloud_cmd(char *data)
 			}
 			break;
 	}
+	
+		show_room_light_info();
 }
 
 
@@ -500,7 +574,7 @@ GpuSend("\r\n");
 
 void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke)
 {
-	char showbuf[128];
+	char showbuf[200];
 	u8 room_temp;
 	u8 temperature_temp;
 	u8 humidity_temp;
@@ -539,19 +613,9 @@ void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke)
 
 void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 {
-	// \xBF\xAA  开
-	// \xB9\xD8  关
-	
-	// \xD7\xD4\xB6\xAF		自动
-	// \xD6\xC6\xC0\xE4   制冷
-	// \xD6\xC6\xC8\xC8   制热
-	// \xCB\xCD\xB7\xE7		送风
-	
-	// \xD7\xD4\xB6\xAF		自动
-	// \xB5\xCD\xCB\xD9		低速
-	// \xD6\xD0\xCB\xD9		中速
-	// \xB8\xDF\xCB\xD9		高速
-	char showbuf[128];
+
+
+	char showbuf[200];
 	char *mode_str;
 	char *windspeed_str;
 	
@@ -589,18 +653,48 @@ void show_airconditin_info(char *temperatrue,char mode,char windspeed)
 			break;
 	}
 		
-//			printf("[debug]temperatrue->%s\r\n",temperatrue);
-//			printf("[debug]mode_str->%x\r\n",mode_str);
-//			printf("[debug]windspeed_str->%x\r\n",windspeed_str);
+
 			memset(showbuf,0x00,sizeof(showbuf));
-				printf("[debug]1");
 //			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'\xBF\xD5\xB5\xF7\xC9\xE8\xD6\xC3',15);LABL(16,2,32,88,'\xC9\xE8\xB6\xA8: %s\xA1\xE6',41,1);LABL(16,2,50,88,'\xC4\xA3\xCA\xBD: %x',41,1);LABL(16,2,68,88,'\xB7\xE7\xCB\xD9: %x',41,1);SXY(0,0);;",temperatrue,mode_str,windspeed_str);
 			sprintf(showbuf,"W8UE(3);PIC(2,2,14);DS16(30,2,'空调设置',15);LABL(16,2,32,88,'设定: %s℃',41,1);LABL(16,2,50,88,'模式: %s',41,1);LABL(16,2,68,88,'风速: %s',41,1);SXY(0,0);;\r\n",temperatrue,mode_str,windspeed_str);
-			printf("[debug]2");
+			printf("len:%d\r\n",strlen(showbuf));
 			GpuSend(showbuf);
-			printf("[debug]3");
+
 }
 
 
-
+void show_room_light_info(void)
+{
+	// \xBF\xAA  开
+	// \xB9\xD8  关
+	 
+	char showbuf[200];
+	
+	char *open = "开";
+	char *close = "关";
+		
+	char *Parlour_light_state_str ;
+	char *Bedroom_light_state_str ;
+	char *Kitchen_light_state_str ;
+	
+	
+	if(Parlour_light_state) Parlour_light_state_str = open;  
+	else Parlour_light_state_str = close;
+	
+	if(Bedroom_light_state) Bedroom_light_state_str = open;  
+	else Bedroom_light_state_str = close;
+	
+	if(Kitchen_light_state) Kitchen_light_state_str = open;  
+	else Kitchen_light_state_str = close;
+	
+	memset(showbuf,0x00,sizeof(showbuf));
+	sprintf(showbuf,"W8UE(6);PIC(2,2,20);DS16(30,2,'灯光状态',15);LABL(16,2,32,88,'客厅: %s',41,1);LABL(16,2,50,88,'卧室: %s',41,1);LABL(16,2,68,88,'厨房: %s',41,1);SXY(0,0);;\r\n",Parlour_light_state_str,Bedroom_light_state_str,Kitchen_light_state_str);
+	//printf("showbuf--%s\r\n",showbuf);
+	GpuSend(showbuf);
+	printf("len:%d\r\n",strlen(showbuf));
+	//delay_ms(200);
+	//GpuSend("W8UE(6);PIC(2,2,20);DS16(30,2,'\xB5\xC6\xB9\xE2\xD7\xB4\xCC\xAC',15);LABL(16,2,32,88,'\xBF\xCD\xCC\xFC: \xB9\xD8',41,1);LABL(16,2,50,88,'\xB3\xF8\xB7\xBF: \xB9\xD8',41,1);LABL(16,2,68,88,'\xB3\xF8\xB7\xBF: \xBF\xAA ',41,1);SXY(0,0);;\r\n"); 
+	//GpuSend("W8UE(6);PIC(2,2,20);DS16(30,2,'灯光状态',15);LABL(16,2,32,88,'客厅: 关',41,1);LABL(16,2,50,88,'卧室: 开',41,1);LABL(16,2,68,88,'厨房: 开',41,1);SXY(0,0);;\r\n"); 
+	
+}
 
