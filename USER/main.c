@@ -28,11 +28,19 @@ void show_room_info(u8 room,u8 temperature,u8 humidity,u16 smoke);
 void show_airconditin_info(char *temperatrue,char mode,char windspeed);
 void show_room_light_info(void);
 
+void closeCurtain(void);
+void openCurtain(void);
+	
+
 u8 Parlour_light_state;
 u8 Bedroom_light_state;
 u8 Kitchen_light_state;
 
 u8 air_conditian_state;
+
+u8 open_curtain_flag;
+u8 close_curtain_flag;
+u8 curtain_state;
 
 /*收到数据的回调函数 */
 static void urc_recvdata_func( const char *data, uint16_t size )
@@ -90,6 +98,11 @@ int main(void)
 	
 	air_conditian_state = 0;
 	
+	open_curtain_flag = 0;
+	close_curtain_flag = 0;
+	curtain_state = 0;
+	
+	
 	//外设初始化
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	delay_init(168);    //初始化延时函数
@@ -117,23 +130,19 @@ int main(void)
 	//NB-COAP相关
 	NBBCxx_init();  //NB M5310A模组驱动初始化
   check_NB_Status();  //在驱动初始化完成后，发送指令检查模组是否正常，2s一次数据，不用再去关闭PSM模式
-
+	LED0 = 0;
 
 	sim800a_pdu_init(); //初始化SIM800A
-
+	LED0 = 1;
 	txtToVoiceInit(27); //初始化语音模块
 	
-	LED0 = 0;
+	TIM3_PWM_Init(1000-1,84-1); //84M/84 = 1MHZ 1MHZ/1000 = 1KHZ
+	
+
 	while(1)
-	{ 
-		
-//		printf("ok2\r\n");
-//		playAudio(3);
-//		delay_ms(3000);
-//		//sim800a_send_warning();
-//		delay_ms(2000);
-		
-		
+	{ 		
+
+			
 		NBBCxx_getUrc( client );//获取客户端对象，成功可获取一次回调，异步获取，NB模组延迟真尼玛高  fuck
 		
 		if(t%400 == 0)
@@ -172,8 +181,7 @@ int main(void)
 			if(ppm_3>9999) ppm_3 = 9999;
 			
 
-		
-			//sprintf( tmpBuf1, "%2d%2d%3d%2d%2d%3d%2d%2d%3d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
+	
 			sprintf( tmpBuf1, "%2d%2d%4d%2d%2d%4d%2d%2d%4d",temperature1,humidity1,ppm_1,temperature2,humidity2,ppm_2,temperature3,humidity3,ppm_3);
 			printf( "\r\n[INFO]coap send primary data:%s\r\n", tmpBuf1);
 			/*进行格式转换 */
@@ -190,12 +198,25 @@ int main(void)
 			show_room_info(2,temperature2,humidity2,ppm2);
 			show_room_info(3,temperature3,humidity3,ppm3);
 			
-			if(temperature1>45||temperature2>45||temperature3>45)
+			if(temperature1>35)
 			{
+					
 					playAudio(1);
 					delay_ms(1000);
+					sim800a_send_warning(1);
 			}
-
+			if(temperature2>35)
+			{
+					playAudio(2);
+					delay_ms(1000);
+					sim800a_send_warning(2);
+			}
+			if(temperature3>35)
+			{
+					playAudio(3);
+					delay_ms(1000);
+					sim800a_send_warning(3);
+			}
 			
 			if(ppm_1>2000||ppm_2>2000||ppm_3>2000)
 			{
@@ -203,7 +224,7 @@ int main(void)
 					delay_ms(1000);
 			}	
 			
-			
+			LED0 = !LED0;
 		}
 	
 		
@@ -350,7 +371,7 @@ void handle_cloud_cmd(char *data)
 				
 				if(!air_conditian_state)
 				{
-						playAudio(3);
+						playAudio(4);
 						delay_ms(500);
 						air_conditian_state = 1;
 				}
@@ -399,7 +420,7 @@ void handle_cloud_cmd(char *data)
 				//空调已关闭
 				if(air_conditian_state)
 				{
-						playAudio(4);
+						playAudio(5);
 						delay_ms(500);
 						air_conditian_state = 0;
 				}
@@ -410,11 +431,24 @@ void handle_cloud_cmd(char *data)
 			//如果是窗帘命令
 			if(strstr(body,"O"))
 			{
+				playAudio(6);
+				delay_ms(500);
 				printf("打开窗帘\r\n");
+				open_curtain_flag = 1;
+				openCurtain();
+				open_curtain_flag = 0;
+				curtain_state = 1;
 			}
 			else if(strstr(body,"C"))
 			{
+			
 				printf("关闭窗帘\r\n");
+				playAudio(7);
+				delay_ms(500);													
+				close_curtain_flag = 1;
+				closeCurtain();
+				close_curtain_flag = 0;
+				curtain_state = 0;
 			}
 			break;
 		case 0x34:
@@ -422,7 +456,8 @@ void handle_cloud_cmd(char *data)
 			printf("设置家庭模式%s: \r\n",body);
 			if(strstr(body,"O"))
 			{
-
+				playAudio(10);
+				delay_ms(500);	
 				printf("打开所有灯\r\n");
 				Parlour_light = 1;
 				Bedroom_light = 1;
@@ -431,12 +466,12 @@ void handle_cloud_cmd(char *data)
 				Parlour_light_state = 1;
 				Bedroom_light_state = 1;
 				Kitchen_light_state = 1;				
-				
-				playAudio(5);
-				delay_ms(500);
+
 			}
 			else if(strstr(body,"C"))
 			{
+				playAudio(11);
+				delay_ms(500);					
 				printf("关闭所有灯\r\n");
 				Parlour_light = 0;
 				Bedroom_light = 0;
@@ -446,8 +481,6 @@ void handle_cloud_cmd(char *data)
 				Bedroom_light_state = 0;
 				Kitchen_light_state = 0;
 				
-				playAudio(6);
-				delay_ms(500);
 			}
 		
 			break;
@@ -458,11 +491,15 @@ void handle_cloud_cmd(char *data)
 			{
 				Fan = 1;
 				printf("打开风机\r\n");
+				playAudio(8);
+				delay_ms(500);					
 			}
 			else if(strstr(body,"C"))
 			{
 				Fan = 0;
 				printf("关闭风机\r\n");
+				playAudio(9);
+				delay_ms(500);					
 			}
 			break;
 		case 0x36:
@@ -692,9 +729,42 @@ void show_room_light_info(void)
 	//printf("showbuf--%s\r\n",showbuf);
 	GpuSend(showbuf);
 	printf("len:%d\r\n",strlen(showbuf));
-	//delay_ms(200);
-	//GpuSend("W8UE(6);PIC(2,2,20);DS16(30,2,'\xB5\xC6\xB9\xE2\xD7\xB4\xCC\xAC',15);LABL(16,2,32,88,'\xBF\xCD\xCC\xFC: \xB9\xD8',41,1);LABL(16,2,50,88,'\xB3\xF8\xB7\xBF: \xB9\xD8',41,1);LABL(16,2,68,88,'\xB3\xF8\xB7\xBF: \xBF\xAA ',41,1);SXY(0,0);;\r\n"); 
-	//GpuSend("W8UE(6);PIC(2,2,20);DS16(30,2,'灯光状态',15);LABL(16,2,32,88,'客厅: 关',41,1);LABL(16,2,50,88,'卧室: 开',41,1);LABL(16,2,68,88,'厨房: 开',41,1);SXY(0,0);;\r\n"); 
+
+	
+}
+
+
+
+void closeCurtain(void)
+{
+	//是否窗帘是打开的且是允许关闭的
+	if(curtain_state&&close_curtain_flag)
+	{
+			TIM_SetCompare4(TIM3,400);	//修改比较值，修改占空比  电机PWM控制
+			TIM_SetCompare3(TIM3,0);	//修改比较值，修改占空比
+			delay_ms(2000);
+			TIM_SetCompare4(TIM3,0);	//修改比较值，修改占空比  电机PWM控制
+			TIM_SetCompare3(TIM3,0);	//修改比较值，修改占空比
+//			close_curtain_flag = 0;
+//			curtain_state = 0;
+	}
+
+}
+
+
+void openCurtain(void)
+{
+		if(!curtain_state&&open_curtain_flag)
+	{
+			TIM_SetCompare4(TIM3,0);	//修改比较值，修改占空比  电机PWM控制
+			TIM_SetCompare3(TIM3,400);	//修改比较值，修改占空比
+			delay_ms(2000);
+			TIM_SetCompare4(TIM3,0);	//修改比较值，修改占空比  电机PWM控制
+			TIM_SetCompare3(TIM3,0);	//修改比较值，修改占空比
+//		open_curtain_flag = 0;
+//		curtain_state = 1;
+	}
+
 	
 }
 

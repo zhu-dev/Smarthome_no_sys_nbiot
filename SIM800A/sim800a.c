@@ -1,16 +1,13 @@
 #include "sim800a.h"
 #include "stdio.h"
 
-char *msg_warning="0891683108701705F011000D91688100874376F40008AA14005B8B66544A005D67094EBA8FDB5165623F95F4";//[警告]有人进入了房间
 
-//const char *commom_1 = "089168"; //包含通用的信息中心头信息
-//const char *commom_2 = "11000D9168";//包含通用的接收方头信息
-//const char *commom_3 = "0008AA";//包含数据包编码通用信息
-//const char *message_center_number = "3108701705F0";  //每两位倒置，86已经放到通用头部，所以这里不添加
-//const char *received_number = "8100874376F4";//每两位倒置，86已经放到通用头部，所以这里不添加
-
-//char *data_lenght = ""; //数据信息长度，通用的接收方头信息+实际信息体
-//char *data = ""; //实际信息体
+const char *msg_head = "0891683108701705F011000D91688100874376F40008AA10";
+	 //char *msg_warning="0891683108701705F011000D91688100874376F40008AA14 005B8B66544A005D67094EBA8FDB5165623F95F4";//[警告]有人进入了房间
+																																			 //8B66544A5BA253856E295EA68FC79AD8
+const char *msg_warning_1 = "8B66544A5BA253856E295EA68FC79AD8";
+const char *msg_warning_2 = "8B66544A53675BA46E295EA68FC79AD8";
+const char *msg_warning_3 = "8B66544A53A8623F6E295EA68FC79AD8 ";
 
 
 
@@ -86,12 +83,13 @@ u8 sim800a_pdu_init(void)
 {
 	u8 res = 0;  
 	printf("[debug]sim800 init start\r\n");
-	while(sim800a_send_cmd("AT+CREG?","+CREG: 0,1",70)) 
+	while(sim800a_send_cmd("AT+CREG?","+CREG: 0,1",50)) 
 	{
 		printf("[ERROR] SIM800 CREG FAILD;..\r\n");
+		delay_ms(1000);
 	}
 	
-		while(sim800a_send_cmd("AT+CMGF=0","OK",20)) 
+		while(sim800a_send_cmd("AT+CMGF=0","OK",10)) 
 	{
 		printf("[ERROR] SIM800 SET PDU MDOE FAILD..\r\n");
 	}
@@ -101,12 +99,30 @@ u8 sim800a_pdu_init(void)
 }
 
 
-void sim800a_send_warning(void)
+void sim800a_send_warning(u8 room)
 {
 	char end[20];
+	char msg_warning[200];
+
 	u8 res = 0;
-	sim800a_send_cmd("AT+CMGS=35",">",10);
-	sim800a_send_data(msg_warning,NULL,2);
+	
+	sim800a_send_cmd("AT+CMGS=31",">",6);
+	switch(room)
+	{
+		case 1:
+						sprintf(msg_warning,"%s%s",msg_head,msg_warning_1);
+						sim800a_send_data(msg_warning,NULL,2);
+			break;
+		case 2:
+						sprintf(msg_warning,"%s%s",msg_head,msg_warning_2);
+						sim800a_send_data(msg_warning,NULL,2);			
+			break;
+		case 3:
+						sprintf(msg_warning,"%s%s",msg_head,msg_warning_3);
+						sim800a_send_data(msg_warning,NULL,2);			
+			break;		
+	}
+
 	//printf("data:%s\r\n",msg_warning);
 	sprintf(end,"%c",0x1A);
 	//printf("data_end:%s\r\n",end);

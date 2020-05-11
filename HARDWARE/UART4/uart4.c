@@ -132,6 +132,8 @@ void playAudio(u8 index)
 {
 	u8 buf[6] = {0x7E,0x04,0x03,0x00,0x01,0xEF};
 	buf[4] = index;
+//	if(index == 10)  buf[4] = 0x0a;
+//	if(index == 11)  buf[4] = 0x0b;
 	sendData(buf,6);
 	delay_ms(50);
 }
