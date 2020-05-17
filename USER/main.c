@@ -134,7 +134,7 @@ int main(void)
 
 	sim800a_pdu_init(); //初始化SIM800A
 	LED0 = 1;
-	txtToVoiceInit(27); //初始化语音模块
+	txtToVoiceInit(23); //初始化语音模块
 	
 	TIM3_PWM_Init(1000-1,84-1); //84M/84 = 1MHZ 1MHZ/1000 = 1KHZ
 	
